@@ -61,18 +61,16 @@ select{appearance:none;cursor:pointer;padding:0 34px 0 12px;background-image:url
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
 
-/* Predictive search */
-.autocomplete-wrap{position:relative;}
-.autocomplete-input{width:100%;height:46px;font-family:'Jost',sans-serif;font-size:15px;font-weight:300;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:var(--radius);outline:none;transition:border-color .2s;padding:0 12px;}
-.autocomplete-input:focus{border-color:var(--teal);}
-.autocomplete-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--teal-border);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1);}
-.autocomplete-dropdown.open{display:block;}
-.autocomplete-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--rule-light);transition:background .1s;}
-.autocomplete-item:hover{background:var(--teal-light);}
-.autocomplete-item:last-child{border-bottom:none;}
-.autocomplete-sku{font-size:11px;font-weight:600;letter-spacing:1px;color:var(--teal);}
-.autocomplete-desc{font-size:13px;color:var(--ink-mid);margin-top:1px;}
-.autocomplete-dims{font-size:11px;color:var(--ink-light);margin-top:1px;}
+/* Zawadi compact search */
+.zawadi-wrap{position:relative;}
+.zawadi-input{width:100%;height:46px;font-family:'Jost',sans-serif;font-size:15px;font-weight:300;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:var(--radius);outline:none;transition:border-color .2s;padding:0 12px;}
+.zawadi-input:focus{border-color:var(--teal);}
+.zawadi-results{display:none;margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;}
+.zawadi-results.open{display:flex;}
+.zawadi-chip{padding:5px 10px;background:var(--surface);border:1px solid var(--rule);border-radius:20px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.zawadi-chip:hover{background:var(--teal-light);border-color:var(--teal-border);}
+.zawadi-chip-sku{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--teal);}
+.zawadi-chip-desc{font-size:11px;color:var(--ink-mid);}
 
 /* Country search */
 .country-wrap{position:relative;}
@@ -285,9 +283,9 @@ select{appearance:none;cursor:pointer;padding:0 34px 0 12px;background-image:url
             <div class="alert alert-teal">Search by SKU or description.</div>
             <div class="field">
               <label>SKU or description</label>
-              <div class="autocomplete-wrap">
-                <input class="autocomplete-input" id="p-zawadi-search" placeholder="e.g. ZW-001 or Cheetah…" oninput="zawadiSearch(this,'p-zawadi-drop','p-zawadi-result')" autocomplete="off"/>
-                <div class="autocomplete-dropdown" id="p-zawadi-drop"></div>
+              <div class="zawadi-wrap">
+                <input class="zawadi-input" id="p-zawadi-search" placeholder="e.g. BR23001 or Cheetah…" oninput="zawadiSearch(this,'p-zawadi-chips','p-zawadi-result','p')" autocomplete="off"/>
+                <div class="zawadi-results" id="p-zawadi-chips"></div>
               </div>
             </div>
             <div id="p-zawadi-result" style="display:none">
@@ -423,9 +421,9 @@ select{appearance:none;cursor:pointer;padding:0 34px 0 12px;background-image:url
         <div class="alert alert-teal">Search by SKU or description.</div>
         <div class="field">
           <label>SKU or description</label>
-          <div class="autocomplete-wrap">
-            <input class="autocomplete-input" id="s-zawadi-search" placeholder="e.g. ZW-001 or Cheetah…" oninput="zawadiSearch(this,'s-zawadi-drop','s-zawadi-result')" autocomplete="off"/>
-            <div class="autocomplete-dropdown" id="s-zawadi-drop"></div>
+          <div class="zawadi-wrap">
+            <input class="zawadi-input" id="s-zawadi-search" placeholder="e.g. BR23001 or Cheetah…" oninput="zawadiSearch(this,'s-zawadi-chips','s-zawadi-result','s')" autocomplete="off"/>
+            <div class="zawadi-results" id="s-zawadi-chips"></div>
           </div>
         </div>
         <div id="s-zawadi-result" style="display:none">
@@ -761,7 +759,8 @@ buildCurrencyTabs();
 
 // Close dropdowns on outside click
 document.addEventListener('click',e=>{
-  if(!e.target.closest('.autocomplete-wrap')&&!e.target.closest('.country-wrap')){
+  if(!e.target.closest('.zawadi-wrap')&&!e.target.closest('.country-wrap')){
+    document.querySelectorAll('.zawadi-results').forEach(d=>d.classList.remove('open'));
     document.querySelectorAll('.autocomplete-dropdown').forEach(d=>d.classList.remove('open'));
   }
 });
@@ -792,29 +791,30 @@ function getSP(selId,otherId){
 }
 
 // ══════════════════════════════════════════
-// AUTOCOMPLETE — ZAWADI
+// AUTOCOMPLETE — ZAWADI (chip style)
 // ══════════════════════════════════════════
-function zawadiSearch(input, dropId, resultId){
+function zawadiSearch(input, chipsId, resultId, prefix){
   const q=input.value.trim().toLowerCase();
-  const drop=document.getElementById(dropId);
-  if(q.length<2){drop.classList.remove('open');drop.innerHTML='';return;}
+  const chips=document.getElementById(chipsId);
+  if(q.length<2){chips.classList.remove('open');chips.innerHTML='';return;}
   const matches=ZAWADI_ITEMS.filter(i=>
     i.sku.toLowerCase().includes(q)||i.desc.toLowerCase().includes(q)
-  ).slice(0,8);
-  if(!matches.length){drop.innerHTML='<div class="autocomplete-item" style="color:var(--ink-light)">No items found</div>';drop.classList.add('open');return;}
-  drop.innerHTML=matches.map(i=>`
-    <div class="autocomplete-item" onclick="selectZawadi(${JSON.stringify(i).replace(/"/g,'&quot;')},'${input.id}','${dropId}','${resultId}')">
-      <div class="autocomplete-sku">${i.sku}</div>
-      <div class="autocomplete-desc">${i.desc}</div>
-      <div class="autocomplete-dims">${i.length}×${i.depth}×${i.height} cm · ${i.weight} kg</div>
+  ).slice(0,10);
+  if(!matches.length){
+    chips.innerHTML='<div class="zawadi-chip"><span class="zawadi-chip-desc" style="color:var(--ink-light)">No items found</span></div>';
+    chips.classList.add('open');return;
+  }
+  chips.innerHTML=matches.map(i=>`
+    <div class="zawadi-chip" onclick='selectZawadi(${JSON.stringify(i)},"${input.id}","${chipsId}","${resultId}","${prefix}")'>
+      <span class="zawadi-chip-sku">${i.sku}</span> <span class="zawadi-chip-desc">${i.desc}</span>
     </div>`).join('');
-  drop.classList.add('open');
+  chips.classList.add('open');
 }
 
-function selectZawadi(item, inputId, dropId, resultId){
+function selectZawadi(item, inputId, chipsId, resultId, prefix){
   document.getElementById(inputId).value=item.sku+' — '+item.desc;
-  document.getElementById(dropId).classList.remove('open');
-  const prefix=inputId.startsWith('p-')?'p':'s';
+  document.getElementById(chipsId).classList.remove('open');
+  document.getElementById(chipsId).innerHTML='';
   if(prefix==='p'){
     pSelectedZawadi=item;
     document.getElementById('p-zawadi-selected-desc').textContent=item.desc;
@@ -949,20 +949,22 @@ function updateFXBreakdown(){
   } else {
     const sel=document.getElementById('fx-ship-select');
     const curVal=sel.value;
-    sel.innerHTML='<option value="">Item price only</option>';
+    sel.innerHTML='<option value="">Item price only (no shipping)</option>';
     pShipOptions.forEach((opt,i)=>{
-      const o=document.createElement('option');o.value=i;
+      const o=document.createElement('option');o.value=String(i);
       o.textContent=opt.label+' — '+fmtR(opt.quotedPriceZAR);
       sel.appendChild(o);
     });
-    if(curVal) sel.value=curVal;
-    const idx=sel.value!==''?parseInt(sel.value):-1;
-    const shipZAR=idx>=0?pShipOptions[idx].quotedPriceZAR:0;
+    // Restore previous selection or default to first shipping option
+    if(curVal!=='' && curVal!==null) sel.value=curVal;
+    else if(pShipOptions.length>0) sel.value='0';
+    const selIdx=sel.value!==''?parseInt(sel.value):-1;
+    const shipZAR=selIdx>=0&&pShipOptions[selIdx]?pShipOptions[selIdx].quotedPriceZAR:0;
     document.getElementById('fxs-item-ex').textContent=fmtFX(currentExVAT,code);
     document.getElementById('fxs-item-inc').textContent=fmtFX(currentIncVAT,code);
-    document.getElementById('fxs-ship').textContent=shipZAR?fmtFX(shipZAR,code):'—';
-    document.getElementById('fxs-total-ex').textContent=fmtFX(currentExVAT+shipZAR,code);
-    document.getElementById('fxs-total-inc').textContent=fmtFX(currentIncVAT+shipZAR,code);
+    document.getElementById('fxs-ship').textContent=shipZAR>0?fmtFX(shipZAR,code):'—';
+    document.getElementById('fxs-total-ex').textContent=fmtFX(currentExVAT+(shipZAR||0),code);
+    document.getElementById('fxs-total-inc').textContent=fmtFX(currentIncVAT+(shipZAR||0),code);
     document.getElementById('fxs-rate').textContent=rate.toFixed(4);
   }
 }
@@ -1007,10 +1009,8 @@ function renderPricingShipResults(results){
     const div=document.createElement('div');div.className='ship-result-block';
     div.innerHTML=`<div class="ship-result-block-title">${r.label}<span>${fmtR(r.data.quotedPriceZAR)}</span></div>
       ${r.warning?`<div class="alert alert-orange" style="margin-bottom:8px;">${r.warning}</div>`:''}
-      <div class="ship-detail-row"><span class="ship-detail-key">Package</span><span class="ship-detail-val">${r.dims.l}×${r.dims.w}×${r.dims.h} cm · ${r.dims.wt} kg</span></div>
-      <div class="ship-detail-row"><span class="ship-detail-key">Volumetric weight</span><span class="ship-detail-val">${volWeight(r.dims.l,r.dims.w,r.dims.h).toFixed(2)} kg</span></div>
-      <div class="ship-detail-row"><span class="ship-detail-key">FedEx base</span><span class="ship-detail-val">${fmtR(r.data.baseFedExZAR)}</span></div>
-      ${r.data.rebulCost?`<div class="ship-detail-row"><span class="ship-detail-key">REBUL crate</span><span class="ship-detail-val">${fmtR(r.data.rebulCost)}</span></div>`:''}`;
+      <div class="ship-detail-row"><span class="ship-detail-key">Package size</span><span class="ship-detail-val">${r.dims.l}×${r.dims.w}×${r.dims.h} cm · ${r.dims.wt} kg</span></div>
+      <div class="ship-detail-row"><span class="ship-detail-key" style="font-weight:600;color:var(--ink);">Total shipping cost</span><span class="ship-detail-val" style="font-size:18px;color:var(--teal);">${fmtR(r.data.quotedPriceZAR)}</span></div>`;
     body.appendChild(div);
   });
   document.getElementById('p-ship-results').style.display='block';
@@ -1051,18 +1051,12 @@ function renderStandaloneResults(results){
   body.innerHTML='';
   if(!results.length){body.innerHTML='<div class="alert alert-terra">No quotes returned.</div>';document.getElementById('s-results-card').style.display='block';return;}
   results.forEach(r=>{
-    const chargeable=Math.max(r.dims.wt,volWeight(r.dims.l,r.dims.w,r.dims.h));
     const div=document.createElement('div');div.className='ship-result-block';
     div.innerHTML=`<div class="ship-result-block-title">${r.label}<span>${fmtR(r.data.quotedPriceZAR)}</span></div>
       ${r.warning?`<div class="alert alert-orange" style="margin-bottom:8px;">${r.warning}</div>`:''}
-      <div class="ship-detail-row"><span class="ship-detail-key">Dimensions</span><span class="ship-detail-val">${r.dims.l}×${r.dims.w}×${r.dims.h} cm</span></div>
-      <div class="ship-detail-row"><span class="ship-detail-key">Actual weight</span><span class="ship-detail-val">${r.dims.wt} kg</span></div>
-      <div class="ship-detail-row"><span class="ship-detail-key">Volumetric weight</span><span class="ship-detail-val">${volWeight(r.dims.l,r.dims.w,r.dims.h).toFixed(2)} kg</span></div>
-      <div class="ship-detail-row"><span class="ship-detail-key">Chargeable weight</span><span class="ship-detail-val">${chargeable.toFixed(2)} kg</span></div>
+      <div class="ship-detail-row"><span class="ship-detail-key">Package size</span><span class="ship-detail-val">${r.dims.l}×${r.dims.w}×${r.dims.h} cm · ${r.dims.wt} kg</span></div>
       <div class="ship-detail-row"><span class="ship-detail-key">FedEx service</span><span class="ship-detail-val">${r.data.serviceName||r.data.serviceType||'—'}</span></div>
-      <div class="ship-detail-row"><span class="ship-detail-key">FedEx base</span><span class="ship-detail-val">${fmtR(r.data.baseFedExZAR)}</span></div>
-      ${r.data.rebulCost?`<div class="ship-detail-row"><span class="ship-detail-key">REBUL crate</span><span class="ship-detail-val">${fmtR(r.data.rebulCost)}</span></div>`:''}
-      <div class="ship-detail-row"><span class="ship-detail-key" style="font-weight:600;color:var(--ink);">Gallery quote</span><span class="ship-detail-val" style="font-size:20px;color:var(--teal);">${fmtR(r.data.quotedPriceZAR)}</span></div>`;
+      <div class="ship-detail-row"><span class="ship-detail-key" style="font-weight:600;color:var(--ink);">Total shipping cost</span><span class="ship-detail-val" style="font-size:20px;color:var(--teal);">${fmtR(r.data.quotedPriceZAR)}</span></div>`;
     body.appendChild(div);
   });
   document.getElementById('s-results-card').style.display='block';
